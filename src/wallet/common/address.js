@@ -4,16 +4,15 @@
  *
  * Address Format:
  *   - String form: "Q" prefix followed by 2 × addressSize lowercase hex characters.
- *     At the default size (20 bytes, NIST Category 1) this is a 41-character
- *     string. At {@link ADDRESS_SIZE_CATEGORY_5} (48 bytes, NIST Category 5)
- *     this is a 97-character string.
+ *     At the default size (64 bytes, NIST Category 5) this is a 129-character
+ *     string. Legacy 20-byte strings are still accepted by the parser.
  *   - Byte form: `addressSize`-byte SHAKE-256 hash of (descriptor || public key)
  *   - Output is always lowercase hex; input parsing is case-insensitive for both
  *     the "Q"/"q" prefix and hex characters
  *   - Unlike EIP-55, no checksum encoding is used in the address itself
  *   - The address helpers are length-agnostic: `addressToString`,
  *     `stringToAddress`, and `isValidAddress` accept any (positive, even)
- *     byte length so that 20-byte and 48-byte (and future) addresses can
+ *     byte length so that 20-byte, 64-byte, and future addresses can
  *     coexist. `getAddressFromPKAndDescriptor` accepts an explicit
  *     `addressSize` (default: {@link DEFAULT_ADDRESS_SIZE}).
  */
@@ -41,7 +40,7 @@ function addressToString(addrBytes) {
  * Convert address string to bytes.
  * @param {string} addrStr - Address string starting with 'Q' followed by an
  *   even number of hex characters (2 per byte). Length is implied by the
- *   string — 40 hex chars for a 20-byte address, 96 hex chars for a 48-byte
+ *   string — 40 hex chars for a 20-byte address, 128 hex chars for a 64-byte
  *   address, etc.
  * @returns {Uint8Array} Decoded address bytes.
  * @throws {Error} If address format is invalid.
@@ -71,7 +70,7 @@ function stringToAddress(addrStr) {
 /**
  * Check if a string is a valid QRL address format (structure only).
  * Accepts any `Q`-prefixed even-length hex string — this lets 20-byte and
- * 48-byte addresses coexist. QRL addresses contain no checksum; applications
+ * 64-byte addresses coexist. QRL addresses contain no checksum; applications
  * should add their own confirmation or checksum layer.
  * @param {string} addrStr - Address string to validate.
  * @returns {boolean} True if valid address format.
@@ -90,8 +89,8 @@ function isValidAddress(addrStr) {
  * @param {Uint8Array} pk
  * @param {Descriptor} descriptor
  * @param {number} [addressSize=DEFAULT_ADDRESS_SIZE] Address length in bytes.
- *   Defaults to 20 (NIST Category 1 — the wallet.js 2.x contract). Pass
- *   `ADDRESS_SIZE_CATEGORY_5` (48) for NIST Category 5.
+ *   Defaults to 64 bytes for the QRL address migration. Pass an explicit
+ *   size for legacy vectors.
  * @returns {Uint8Array} `addressSize`-byte address.
  * @throws {Error} If pk length mismatch or addressSize is not a positive integer.
  */

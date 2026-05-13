@@ -33,12 +33,11 @@ describe('Cross-Implementation Verification', () => {
      * Address derivation in wallet.js:
      *   address = SHAKE256(descriptor || public_key, addressSize bytes)
      *
-     * The default is 20 bytes (NIST Category 1 — v2.x contract). Callers
-     * opt in to 48 bytes (NIST Category 5) via the `addressSize` parameter.
-     * Both must match go-qrllib when invoked with the same size.
+     * The default is 64 bytes for the QRL address migration. Legacy sizes
+     * remain explicit opt-ins through the `addressSize` parameter.
      */
     walletTestCases.forEach((tc) => {
-      it(`${tc.name}: default (20-byte) address derivation matches fixture`, () => {
+      it(`${tc.name}: default 64-byte address derivation matches fixture`, () => {
         const descriptor = hexToBytes(tc.extendedSeed.slice(0, DESCRIPTOR_SIZE * 2));
         const pk = hexToBytes(tc.wantPK);
 
@@ -47,20 +46,20 @@ describe('Cross-Implementation Verification', () => {
         input.set(pk, descriptor.length);
         const computedAddress = shake256.create({ dkLen: DEFAULT_ADDRESS_SIZE }).update(input).digest();
 
-        expect(DEFAULT_ADDRESS_SIZE).to.equal(ADDRESS_SIZE_CATEGORY_1);
+        expect(DEFAULT_ADDRESS_SIZE).to.equal(ADDRESS_SIZE_CATEGORY_5);
         expect(bytesToHex(computedAddress)).to.equal(tc.wantAddress.slice(1));
       });
 
-      it(`${tc.name}: 48-byte (NIST Cat 5) address derivation matches fixture`, () => {
+      it(`${tc.name}: explicit 20-byte legacy address is the fixture prefix`, () => {
         const descriptor = hexToBytes(tc.extendedSeed.slice(0, DESCRIPTOR_SIZE * 2));
         const pk = hexToBytes(tc.wantPK);
 
         const input = new Uint8Array(descriptor.length + pk.length);
         input.set(descriptor, 0);
         input.set(pk, descriptor.length);
-        const computedAddress = shake256.create({ dkLen: ADDRESS_SIZE_CATEGORY_5 }).update(input).digest();
+        const computedAddress = shake256.create({ dkLen: ADDRESS_SIZE_CATEGORY_1 }).update(input).digest();
 
-        expect(bytesToHex(computedAddress)).to.equal(tc.wantAddress48.slice(1));
+        expect(bytesToHex(computedAddress)).to.equal(tc.wantAddress.slice(1, 1 + ADDRESS_SIZE_CATEGORY_1 * 2));
       });
     });
   });
@@ -146,7 +145,7 @@ describe('Cross-Implementation Verification', () => {
      * These vectors should be consistent with go-qrllib.
      */
     walletTestCases.forEach((tc) => {
-      it(`${tc.name}: all wallet components match vector (default 20-byte address)`, () => {
+      it(`${tc.name}: all wallet components match vector (default 64-byte address)`, () => {
         const w = MLDSA87.newWalletFromMnemonic(tc.wantMnemonic);
 
         // Extended seed
@@ -158,7 +157,7 @@ describe('Cross-Implementation Verification', () => {
         // Secret key
         expect(bytesToHex(w.getSK())).to.equal(tc.wantSK);
 
-        // Address — default size (20 bytes, NIST Cat 1)
+        // Address — default size (64 bytes, NIST Cat 5)
         expect(w.getAddressStr()).to.equal(tc.wantAddress);
 
         // Mnemonic
@@ -167,9 +166,9 @@ describe('Cross-Implementation Verification', () => {
         w.zeroize();
       });
 
-      it(`${tc.name}: opt-in 48-byte (NIST Cat 5) address matches vector`, () => {
-        const w = MLDSA87.newWalletFromMnemonic(tc.wantMnemonic, ADDRESS_SIZE_CATEGORY_5);
-        expect(w.getAddressStr()).to.equal(tc.wantAddress48);
+      it(`${tc.name}: explicit legacy 20-byte address matches vector prefix`, () => {
+        const w = MLDSA87.newWalletFromMnemonic(tc.wantMnemonic, ADDRESS_SIZE_CATEGORY_1);
+        expect(w.getAddressStr()).to.equal(`Q${tc.wantAddress.slice(1, 1 + ADDRESS_SIZE_CATEGORY_1 * 2)}`);
         w.zeroize();
       });
     });

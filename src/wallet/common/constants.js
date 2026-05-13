@@ -8,26 +8,24 @@ export const DESCRIPTOR_SIZE = 3;
 
 /**
  * @type {number} Address length in bytes for NIST Category 1 post-quantum
- * security (the default used in wallet.js 2.x). 20 bytes produces a
- * `Q` + 40 hex-character address string.
+ * security. 20 bytes produces a `Q` + 40 hex-character address string.
  */
 export const ADDRESS_SIZE_CATEGORY_1 = 20;
 
 /**
  * @type {number} Address length in bytes for NIST Category 5 post-quantum
- * security (the 3.0 value). 48 bytes produces a `Q` + 96 hex-character
+ * security. 64 bytes produces a `Q` + 128 hex-character
  * address string.
  */
-export const ADDRESS_SIZE_CATEGORY_5 = 48;
+export const ADDRESS_SIZE_CATEGORY_5 = 64;
 
 /**
  * @type {number} Default address length in bytes.
- * Defaults to {@link ADDRESS_SIZE_CATEGORY_1} (20 bytes) to preserve the
- * wallet.js 2.x API contract: callers that do not specify an address size
- * get the historical value. Opt in to larger sizes via the `addressSize`
- * parameter on address helpers and `Wallet` factory methods.
+ * Defaults to {@link ADDRESS_SIZE_CATEGORY_5} (64 bytes) for the 64-byte
+ * QRL address migration. Callers that need legacy vectors can pass an
+ * explicit `addressSize` to address helpers and `Wallet` factory methods.
  */
-export const DEFAULT_ADDRESS_SIZE = ADDRESS_SIZE_CATEGORY_1;
+export const DEFAULT_ADDRESS_SIZE = ADDRESS_SIZE_CATEGORY_5;
 
 /**
  * @type {number} Backwards-compatible alias for {@link DEFAULT_ADDRESS_SIZE}.

@@ -10,7 +10,7 @@ export function addressToString(addrBytes: Uint8Array): string;
  * Convert address string to bytes.
  * @param {string} addrStr - Address string starting with 'Q' followed by an
  *   even number of hex characters (2 per byte). Length is implied by the
- *   string — 40 hex chars for a 20-byte address, 96 hex chars for a 48-byte
+ *   string — 40 hex chars for a 20-byte address, 128 hex chars for a 64-byte
  *   address, etc.
  * @returns {Uint8Array} Decoded address bytes.
  * @throws {Error} If address format is invalid.
@@ -19,7 +19,7 @@ export function stringToAddress(addrStr: string): Uint8Array;
 /**
  * Check if a string is a valid QRL address format (structure only).
  * Accepts any `Q`-prefixed even-length hex string — this lets 20-byte and
- * 48-byte addresses coexist. QRL addresses contain no checksum; applications
+ * 64-byte addresses coexist. QRL addresses contain no checksum; applications
  * should add their own confirmation or checksum layer.
  * @param {string} addrStr - Address string to validate.
  * @returns {boolean} True if valid address format.
@@ -30,8 +30,8 @@ export function isValidAddress(addrStr: string): boolean;
  * @param {Uint8Array} pk
  * @param {Descriptor} descriptor
  * @param {number} [addressSize=DEFAULT_ADDRESS_SIZE] Address length in bytes.
- *   Defaults to 20 (NIST Category 1 — the wallet.js 2.x contract). Pass
- *   `ADDRESS_SIZE_CATEGORY_5` (48) for NIST Category 5.
+ *   Defaults to 64 bytes for the QRL address migration. Pass an explicit
+ *   size for legacy vectors.
  * @returns {Uint8Array} `addressSize`-byte address.
  * @throws {Error} If pk length mismatch or addressSize is not a positive integer.
  */

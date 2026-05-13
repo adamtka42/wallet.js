@@ -51,9 +51,8 @@ export class Wallet {
     sk: Uint8Array<ArrayBufferLike>;
     /**
      * Address length in bytes this wallet derives. Defaults to
-     * {@link DEFAULT_ADDRESS_SIZE} (20, NIST Category 1 — v2.x contract);
-     * pass `addressSize: ADDRESS_SIZE_CATEGORY_5` (48) on construction to
-     * get NIST Category 5 post-quantum collision resistance.
+     * {@link DEFAULT_ADDRESS_SIZE} (64, NIST Category 5 for the QRL address
+     * migration). Pass an explicit address size for legacy vectors.
      * @type {number}
      */
     addressSize: number;

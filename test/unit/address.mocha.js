@@ -23,10 +23,10 @@ describe('wallet/common/address', () => {
   });
 
   it('addressToString accepts any positive Uint8Array length (size-agnostic)', () => {
-    // Length is not fixed — 20 bytes (v2.x default), 48 bytes (Cat 5), any size
+    // Length is not fixed: 20 bytes, 64 bytes, and future sizes all round-trip.
     // is acceptable. This keeps the helper usable at any addressSize.
     expect(addressToString(new Uint8Array(20).fill(0xaa))).to.match(/^Q[0-9a-f]{40}$/);
-    expect(addressToString(new Uint8Array(48).fill(0xaa))).to.match(/^Q[0-9a-f]{96}$/);
+    expect(addressToString(new Uint8Array(64).fill(0xaa))).to.match(/^Q[0-9a-f]{128}$/);
     expect(addressToString(Uint8Array.from([1, 2]))).to.equal('Q0102');
   });
 

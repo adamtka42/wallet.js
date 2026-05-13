@@ -206,32 +206,22 @@ describe('Edge Cases', () => {
   });
 
   describe('Address Validation Edge Cases', () => {
-    // Address helpers are length-agnostic: 20-byte (default, NIST Cat 1) and
-    // 48-byte (opt-in, NIST Cat 5) addresses must both round-trip cleanly.
-
-    it('stringToAddress accepts lowercase q prefix (20-byte default)', () => {
-      const addr = 'q' + '0'.repeat(40);
+    it('stringToAddress accepts lowercase q prefix', () => {
+      const addr = 'q' + '0'.repeat(128);
       const bytes = stringToAddress(addr);
       expect(bytes).to.be.instanceOf(Uint8Array);
-      expect(bytes.length).to.equal(20);
+      expect(bytes.length).to.equal(64);
     });
 
-    it('stringToAddress accepts uppercase Q prefix (20-byte default)', () => {
-      const addr = 'Q' + '0'.repeat(40);
+    it('stringToAddress accepts uppercase Q prefix', () => {
+      const addr = 'Q' + '0'.repeat(128);
       const bytes = stringToAddress(addr);
       expect(bytes).to.be.instanceOf(Uint8Array);
-      expect(bytes.length).to.equal(20);
-    });
-
-    it('stringToAddress accepts 48-byte (NIST Cat 5) addresses', () => {
-      const addr = 'Q' + '0'.repeat(96);
-      const bytes = stringToAddress(addr);
-      expect(bytes).to.be.instanceOf(Uint8Array);
-      expect(bytes.length).to.equal(48);
+      expect(bytes.length).to.equal(64);
     });
 
     it('stringToAddress trims whitespace', () => {
-      const addr = '  Q' + '0'.repeat(40) + '  ';
+      const addr = '  Q' + '0'.repeat(128) + '  ';
       const bytes = stringToAddress(addr);
       expect(bytes).to.be.instanceOf(Uint8Array);
     });
@@ -243,36 +233,34 @@ describe('Edge Cases', () => {
     });
 
     it('stringToAddress rejects missing Q prefix', () => {
-      expect(() => stringToAddress('0'.repeat(40))).to.throw('address must start with Q');
+      expect(() => stringToAddress('0'.repeat(128))).to.throw('address must start with Q');
     });
 
     it('stringToAddress rejects empty or odd-length hex', () => {
       expect(() => stringToAddress('Q')).to.throw('address must be Q + a non-empty even number of hex characters');
       expect(() => stringToAddress('Q000')).to.throw('address must be Q + a non-empty even number of hex characters');
-      expect(() => stringToAddress('Q' + '0'.repeat(41))).to.throw(
+      expect(() => stringToAddress('Q' + '0'.repeat(129))).to.throw(
         'address must be Q + a non-empty even number of hex characters'
       );
     });
 
     it('stringToAddress rejects invalid hex characters', () => {
-      expect(() => stringToAddress('Q' + 'z'.repeat(40))).to.throw('address contains invalid characters');
-      expect(() => stringToAddress('Q' + '0'.repeat(39) + 'g')).to.throw('address contains invalid characters');
+      expect(() => stringToAddress('Q' + 'z'.repeat(128))).to.throw('address contains invalid characters');
+      expect(() => stringToAddress('Q' + '0'.repeat(127) + 'g')).to.throw('address contains invalid characters');
     });
 
-    it('isValidAddress returns true for valid addresses of either size', () => {
-      // 20-byte (v2.x default)
+    it('isValidAddress returns true for valid addresses of supported sizes', () => {
       expect(isValidAddress('Q' + '0'.repeat(40))).to.equal(true);
       expect(isValidAddress('Q' + 'f'.repeat(40))).to.equal(true);
-      // 48-byte (NIST Cat 5 opt-in)
-      expect(isValidAddress('Q' + '0'.repeat(96))).to.equal(true);
-      expect(isValidAddress('Q' + 'f'.repeat(96))).to.equal(true);
+      expect(isValidAddress('Q' + '0'.repeat(128))).to.equal(true);
+      expect(isValidAddress('Q' + 'f'.repeat(128))).to.equal(true);
     });
 
     it('isValidAddress returns false for invalid address', () => {
       expect(isValidAddress('')).to.equal(false);
       expect(isValidAddress('Q')).to.equal(false);
       expect(isValidAddress('Q000')).to.equal(false); // odd hex length
-      expect(isValidAddress('0'.repeat(40))).to.equal(false); // no Q prefix
+      expect(isValidAddress('0'.repeat(128))).to.equal(false); // no Q prefix
       expect(isValidAddress(null)).to.equal(false);
       expect(isValidAddress(123)).to.equal(false);
     });
@@ -287,19 +275,19 @@ describe('Edge Cases', () => {
       expect(addressToString(ffs)).to.equal('Q' + 'f'.repeat(40));
     });
 
-    it('addressToString handles all-zero 48-byte address', () => {
-      const zeros = new Uint8Array(48).fill(0);
-      expect(addressToString(zeros)).to.equal('Q' + '0'.repeat(96));
+    it('addressToString handles all-zero address', () => {
+      const zeros = new Uint8Array(64).fill(0);
+      expect(addressToString(zeros)).to.equal('Q' + '0'.repeat(128));
     });
 
-    it('addressToString handles all-ff 48-byte address', () => {
-      const ffs = new Uint8Array(48).fill(0xff);
-      expect(addressToString(ffs)).to.equal('Q' + 'f'.repeat(96));
+    it('addressToString handles all-ff address', () => {
+      const ffs = new Uint8Array(64).fill(0xff);
+      expect(addressToString(ffs)).to.equal('Q' + 'f'.repeat(128));
     });
 
-    it('roundtrip: addressToString -> stringToAddress (default 20-byte)', () => {
+    it('roundtrip: addressToString -> stringToAddress (default 64-byte)', () => {
       const original = wallet.getAddress();
-      expect(original.length).to.equal(20);
+      expect(original.length).to.equal(64);
       const str = addressToString(original);
       const bytes = stringToAddress(str);
       expect(Array.from(bytes)).to.deep.equal(Array.from(original));

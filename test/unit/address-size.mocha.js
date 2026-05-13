@@ -1,12 +1,8 @@
 /**
  * Tests for the configurable address-size API.
  *
- * wallet.js 3.x changed the address length from 20 bytes (NIST Category 1)
- * to 48 bytes (NIST Category 5), silently breaking callers that depended on
- * the v2.x contract. The address size is now configurable, defaulting back
- * to 20 bytes so code that does not specify an explicit size matches v2.x.
- * Callers needing 48-byte Category-5 collision resistance opt in via the
- * `addressSize` parameter.
+ * The address size is configurable. The 64-byte migration makes Category 5
+ * the default while keeping explicit legacy sizes available for vectors.
  */
 import { expect } from 'chai';
 import { bytesToHex } from '@noble/hashes/utils.js';
@@ -32,13 +28,13 @@ describe('configurable address size', () => {
       expect(ADDRESS_SIZE_CATEGORY_1).to.equal(20);
     });
 
-    it('NIST Category 5 = 48 bytes', () => {
-      expect(ADDRESS_SIZE_CATEGORY_5).to.equal(48);
+    it('NIST Category 5 = 64 bytes', () => {
+      expect(ADDRESS_SIZE_CATEGORY_5).to.equal(64);
     });
 
-    it('default equals Category 1 (v2.x contract)', () => {
-      expect(DEFAULT_ADDRESS_SIZE).to.equal(ADDRESS_SIZE_CATEGORY_1);
-      expect(DEFAULT_ADDRESS_SIZE).to.equal(20);
+    it('default equals Category 5', () => {
+      expect(DEFAULT_ADDRESS_SIZE).to.equal(ADDRESS_SIZE_CATEGORY_5);
+      expect(DEFAULT_ADDRESS_SIZE).to.equal(64);
     });
 
     it('legacy ADDRESS_SIZE alias tracks the default', () => {
@@ -47,27 +43,27 @@ describe('configurable address size', () => {
   });
 
   describe('getAddressFromPKAndDescriptor', () => {
-    it('defaults to 20-byte address when addressSize is omitted', () => {
+    it('defaults to 64-byte address when addressSize is omitted', () => {
       const pk = new Uint8Array(CryptoPublicKeyBytes).fill(0xab);
       const desc = new Descriptor(Uint8Array.from([1, 0, 0]));
       const addr = getAddressFromPKAndDescriptor(pk, desc);
-      expect(addr.length).to.equal(20);
+      expect(addr.length).to.equal(64);
     });
 
-    it('returns exact requested length for 20, 32, and 48 byte sizes', () => {
+    it('returns exact requested length for 20, 32, and 64 byte sizes', () => {
       const pk = new Uint8Array(CryptoPublicKeyBytes).fill(0xab);
       const desc = new Descriptor(Uint8Array.from([1, 0, 0]));
-      for (const size of [20, 32, 48]) {
+      for (const size of [20, 32, 64]) {
         expect(getAddressFromPKAndDescriptor(pk, desc, size).length).to.equal(size);
       }
     });
 
-    it('20-byte address is a prefix of the 48-byte address (SHAKE-256 XOF property)', () => {
+    it('20-byte address is a prefix of the 64-byte address (SHAKE-256 XOF property)', () => {
       const pk = new Uint8Array(CryptoPublicKeyBytes).fill(0xab);
       const desc = new Descriptor(Uint8Array.from([1, 0, 0]));
       const addr20 = bytesToHex(getAddressFromPKAndDescriptor(pk, desc, 20));
-      const addr48 = bytesToHex(getAddressFromPKAndDescriptor(pk, desc, 48));
-      expect(addr48.startsWith(addr20)).to.equal(true);
+      const addr64 = bytesToHex(getAddressFromPKAndDescriptor(pk, desc, 64));
+      expect(addr64.startsWith(addr20)).to.equal(true);
     });
 
     it('rejects zero, negative, or non-integer addressSize', () => {
@@ -84,17 +80,17 @@ describe('configurable address size', () => {
   describe('Wallet constructor', () => {
     it('stores addressSize on the instance and uses it for getAddress()', () => {
       const w = MLDSA87.newWalletFromMnemonic(tc.wantMnemonic);
-      expect(w.addressSize).to.equal(20);
-      expect(w.getAddress().length).to.equal(20);
+      expect(w.addressSize).to.equal(64);
+      expect(w.getAddress().length).to.equal(64);
       expect(w.getAddressStr()).to.equal(tc.wantAddress);
       w.zeroize();
     });
 
-    it('accepts addressSize: 48 for NIST Category 5', () => {
+    it('accepts addressSize: 64 for NIST Category 5', () => {
       const w = MLDSA87.newWalletFromMnemonic(tc.wantMnemonic, ADDRESS_SIZE_CATEGORY_5);
-      expect(w.addressSize).to.equal(48);
-      expect(w.getAddress().length).to.equal(48);
-      expect(w.getAddressStr()).to.equal(tc.wantAddress48);
+      expect(w.addressSize).to.equal(64);
+      expect(w.getAddress().length).to.equal(64);
+      expect(w.getAddressStr()).to.equal(tc.wantAddress);
       w.zeroize();
     });
 
@@ -114,62 +110,62 @@ describe('configurable address size', () => {
   });
 
   describe('Wallet static factories', () => {
-    it('newWallet() defaults to 20 bytes', () => {
+    it('newWallet() defaults to 64 bytes', () => {
       const w = MLDSA87.newWallet();
-      expect(w.addressSize).to.equal(20);
-      expect(w.getAddress().length).to.equal(20);
+      expect(w.addressSize).to.equal(64);
+      expect(w.getAddress().length).to.equal(64);
       w.zeroize();
     });
 
-    it('newWallet(metadata, 48) produces 48-byte addresses', () => {
+    it('newWallet(metadata, 64) produces 64-byte addresses', () => {
       const w = MLDSA87.newWallet([0, 0], ADDRESS_SIZE_CATEGORY_5);
-      expect(w.addressSize).to.equal(48);
-      expect(w.getAddress().length).to.equal(48);
+      expect(w.addressSize).to.equal(64);
+      expect(w.getAddress().length).to.equal(64);
       w.zeroize();
     });
 
-    it('newWalletFromSeed() defaults to 20 bytes and honors opt-in to 48', () => {
+    it('newWalletFromSeed() defaults to 64 bytes and honors explicit legacy 20 bytes', () => {
       const seed = new Seed(new Uint8Array(48).fill(0x11));
       const wDefault = MLDSA87.newWalletFromSeed(seed);
-      const wCat5 = MLDSA87.newWalletFromSeed(seed, [0, 0], ADDRESS_SIZE_CATEGORY_5);
-      expect(wDefault.getAddressStr().length - 1).to.equal(40);
-      expect(wCat5.getAddressStr().length - 1).to.equal(96);
-      // Same seed, same pk — 20-byte address must be a prefix of the 48-byte one.
-      expect(wCat5.getAddressStr().slice(1)).to.match(new RegExp(`^${wDefault.getAddressStr().slice(1)}`));
+      const wLegacy = MLDSA87.newWalletFromSeed(seed, [0, 0], ADDRESS_SIZE_CATEGORY_1);
+      expect(wDefault.getAddressStr().length - 1).to.equal(128);
+      expect(wLegacy.getAddressStr().length - 1).to.equal(40);
+      // Same seed, same pk: the legacy 20-byte address is a prefix of the 64-byte one.
+      expect(wDefault.getAddressStr().slice(1)).to.match(new RegExp(`^${wLegacy.getAddressStr().slice(1)}`));
       wDefault.zeroize();
-      wCat5.zeroize();
+      wLegacy.zeroize();
     });
 
-    it('newWalletFromExtendedSeed() defaults to 20 bytes and honors opt-in to 48', () => {
+    it('newWalletFromExtendedSeed() defaults to 64 bytes and honors explicit legacy 20 bytes', () => {
       const ext = ExtendedSeed.from(tc.extendedSeed);
       const wDefault = MLDSA87.newWalletFromExtendedSeed(ext);
-      const wCat5 = MLDSA87.newWalletFromExtendedSeed(ext, ADDRESS_SIZE_CATEGORY_5);
+      const wLegacy = MLDSA87.newWalletFromExtendedSeed(ext, ADDRESS_SIZE_CATEGORY_1);
       expect(wDefault.getAddressStr()).to.equal(tc.wantAddress);
-      expect(wCat5.getAddressStr()).to.equal(tc.wantAddress48);
+      expect(wLegacy.getAddressStr()).to.equal(`Q${tc.wantAddress.slice(1, 1 + ADDRESS_SIZE_CATEGORY_1 * 2)}`);
       wDefault.zeroize();
-      wCat5.zeroize();
+      wLegacy.zeroize();
     });
 
-    it('newWalletFromMnemonic() defaults to 20 bytes and honors opt-in to 48', () => {
+    it('newWalletFromMnemonic() defaults to 64 bytes and honors explicit legacy 20 bytes', () => {
       const wDefault = MLDSA87.newWalletFromMnemonic(tc.wantMnemonic);
-      const wCat5 = MLDSA87.newWalletFromMnemonic(tc.wantMnemonic, ADDRESS_SIZE_CATEGORY_5);
+      const wLegacy = MLDSA87.newWalletFromMnemonic(tc.wantMnemonic, ADDRESS_SIZE_CATEGORY_1);
       expect(wDefault.getAddressStr()).to.equal(tc.wantAddress);
-      expect(wCat5.getAddressStr()).to.equal(tc.wantAddress48);
+      expect(wLegacy.getAddressStr()).to.equal(`Q${tc.wantAddress.slice(1, 1 + ADDRESS_SIZE_CATEGORY_1 * 2)}`);
       wDefault.zeroize();
-      wCat5.zeroize();
+      wLegacy.zeroize();
     });
   });
 
   describe('auto-select factory', () => {
-    it('newWalletFromExtendedSeed() auto-select defaults to 20 bytes', () => {
+    it('newWalletFromExtendedSeed() auto-select defaults to 64 bytes', () => {
       const w = newWalletFromExtendedSeed(tc.extendedSeed);
       expect(w.getAddressStr()).to.equal(tc.wantAddress);
       w.zeroize();
     });
 
-    it('newWalletFromExtendedSeed() auto-select honors opt-in to 48 bytes', () => {
-      const w = newWalletFromExtendedSeed(tc.extendedSeed, ADDRESS_SIZE_CATEGORY_5);
-      expect(w.getAddressStr()).to.equal(tc.wantAddress48);
+    it('newWalletFromExtendedSeed() auto-select honors explicit legacy 20 bytes', () => {
+      const w = newWalletFromExtendedSeed(tc.extendedSeed, ADDRESS_SIZE_CATEGORY_1);
+      expect(w.getAddressStr()).to.equal(`Q${tc.wantAddress.slice(1, 1 + ADDRESS_SIZE_CATEGORY_1 * 2)}`);
       w.zeroize();
     });
   });
@@ -182,10 +178,10 @@ describe('configurable address size', () => {
       expect(Array.from(stringToAddress(str))).to.deep.equal(Array.from(bytes));
     });
 
-    it('round-trips 48-byte addresses', () => {
-      const bytes = new Uint8Array(48).fill(0xcd);
+    it('round-trips 64-byte addresses', () => {
+      const bytes = new Uint8Array(64).fill(0xcd);
       const str = addressToString(bytes);
-      expect(str).to.equal('Q' + 'cd'.repeat(48));
+      expect(str).to.equal('Q' + 'cd'.repeat(64));
       expect(Array.from(stringToAddress(str))).to.deep.equal(Array.from(bytes));
     });
 
@@ -198,13 +194,13 @@ describe('configurable address size', () => {
   });
 
   describe('interop between sizes', () => {
-    it('wallet constructed at 20 bytes and 48 bytes produce addresses with the same prefix for the same seed', () => {
+    it('wallet constructed at 20 bytes and 64 bytes produce addresses with the same prefix for the same seed', () => {
       const ext = ExtendedSeed.from(tc.extendedSeed);
       const w20 = MLDSA87.newWalletFromExtendedSeed(ext, ADDRESS_SIZE_CATEGORY_1);
-      const w48 = MLDSA87.newWalletFromExtendedSeed(ext, ADDRESS_SIZE_CATEGORY_5);
-      expect(w48.getAddressStr().slice(1).startsWith(w20.getAddressStr().slice(1))).to.equal(true);
+      const w64 = MLDSA87.newWalletFromExtendedSeed(ext, ADDRESS_SIZE_CATEGORY_5);
+      expect(w64.getAddressStr().slice(1).startsWith(w20.getAddressStr().slice(1))).to.equal(true);
       w20.zeroize();
-      w48.zeroize();
+      w64.zeroize();
     });
   });
 });
