@@ -43,6 +43,15 @@ describe('wallet/common/address', () => {
     expect(bytesToHex(addr)).to.equal(addrHex);
   });
 
+  it('getAddressFromPKAndDescriptor matches go-qrllib 64-byte cross-vector', () => {
+    const desc = new Descriptor(Uint8Array.from([WalletType.ML_DSA_87, 0, 0]));
+    const pk = new Uint8Array(CryptoPublicKeyBytes).fill(0x42);
+    const addr = getAddressFromPKAndDescriptor(pk, desc);
+    expect(addressToString(addr)).to.equal(
+      'Qf9e32f504239505ae25c8dd30a3837b8433602ce6ef5dd828806475878fea626757016824d8f08033f453ffeae85c0290b1ee7b55324884e12947d0086e6a040'
+    );
+  });
+
   it('getAddressFromPKAndDescriptor rejects non-Uint8 public keys', () => {
     const desc = new Descriptor(Uint8Array.from([1, 0, 0]));
     expect(() => getAddressFromPKAndDescriptor([1, 2, 3], desc)).to.throw('pk must be Uint8Array');

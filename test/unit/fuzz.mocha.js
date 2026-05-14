@@ -10,7 +10,7 @@ import { addressToString, stringToAddress, isValidAddress } from '../../src/wall
 import { Seed, ExtendedSeed } from '../../src/wallet/common/seed.js';
 import { WalletType } from '../../src/wallet/common/wallettype.js';
 import { binToMnemonic, mnemonicToBin } from '../../src/wallet/misc/mnemonic.js';
-import { SEED_SIZE, EXTENDED_SEED_SIZE } from '../../src/wallet/common/constants.js';
+import { ADDRESS_SIZE, SEED_SIZE, EXTENDED_SEED_SIZE } from '../../src/wallet/common/constants.js';
 
 describe('Fuzz Tests (Property-Based)', function propertyBasedTests() {
   // Increase timeout for property-based tests
@@ -80,9 +80,9 @@ describe('Fuzz Tests (Property-Based)', function propertyBasedTests() {
   });
 
   describe('Address Properties', () => {
-    it('addressToString -> stringToAddress roundtrip preserves bytes (20-byte default)', () => {
+    it('addressToString -> stringToAddress roundtrip preserves bytes (64-byte default)', () => {
       fc.assert(
-        fc.property(fc.uint8Array({ minLength: 20, maxLength: 20 }), (addrBytes) => {
+        fc.property(fc.uint8Array({ minLength: ADDRESS_SIZE, maxLength: ADDRESS_SIZE }), (addrBytes) => {
           const str = addressToString(addrBytes);
           const recovered = stringToAddress(str);
           return recovered.length === addrBytes.length && recovered.every((b, i) => b === addrBytes[i]);
@@ -91,9 +91,9 @@ describe('Fuzz Tests (Property-Based)', function propertyBasedTests() {
       );
     });
 
-    it('addressToString -> stringToAddress roundtrip preserves bytes (48-byte Cat 5)', () => {
+    it('addressToString -> stringToAddress roundtrip preserves bytes (explicit 20-byte legacy)', () => {
       fc.assert(
-        fc.property(fc.uint8Array({ minLength: 48, maxLength: 48 }), (addrBytes) => {
+        fc.property(fc.uint8Array({ minLength: 20, maxLength: 20 }), (addrBytes) => {
           const str = addressToString(addrBytes);
           const recovered = stringToAddress(str);
           return recovered.length === addrBytes.length && recovered.every((b, i) => b === addrBytes[i]);
