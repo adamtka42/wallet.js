@@ -17,14 +17,33 @@ export function addressToString(addrBytes: Uint8Array): string;
  */
 export function stringToAddress(addrStr: string): Uint8Array;
 /**
- * Check if a string is a valid QRL address format (structure only).
+ * Check if a string is a valid QRL address.
  * Accepts any `Q`-prefixed even-length hex string — this lets 20-byte and
- * 64-byte addresses coexist. QRL addresses contain no checksum; applications
- * should add their own confirmation or checksum layer.
+ * 64-byte addresses coexist. Lowercase and uppercase address bodies are
+ * accepted as non-checksummed compatibility forms; mixed-case address bodies
+ * must match the SHAKE-256 checksum.
  * @param {string} addrStr - Address string to validate.
  * @returns {boolean} True if valid address format.
  */
 export function isValidAddress(addrStr: string): boolean;
+/**
+ * Return the EIP-55-style mixed-case representation of a QRL address using
+ * SHAKE-256 instead of Keccak. The hash input is the lowercase ASCII hex
+ * address body without the Q prefix.
+ * @param {string} addrStr - QRL address string.
+ * @returns {string} Checksummed QRL address string.
+ * @throws {Error} If address format is invalid.
+ */
+export function toChecksumAddress(addrStr: string): string;
+/**
+ * Check if a string is a valid QRL checksum address.
+ * Lowercase and uppercase address bodies are accepted as non-checksummed
+ * compatibility forms. Mixed-case address bodies must match the SHAKE-256
+ * checksum exactly.
+ * @param {string} addrStr - Address string to validate.
+ * @returns {boolean} True if valid address format and checksum policy.
+ */
+export function isValidChecksumAddress(addrStr: string): boolean;
 /**
  * Derive an address from a public key and descriptor.
  * @param {Uint8Array} pk

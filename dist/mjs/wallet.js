@@ -56,7 +56,8 @@ const EXTENDED_SEED_SIZE = DESCRIPTOR_SIZE + SEED_SIZE;
  *   - Byte form: `addressSize`-byte SHAKE-256 hash of (descriptor || public key)
  *   - Output is always lowercase hex; input parsing is case-insensitive for both
  *     the "Q"/"q" prefix and hex characters
- *   - Unlike EIP-55, no checksum encoding is used in the address itself
+ *   - EIP-55-style display checksums are available via `toChecksumAddress`.
+ *     They use SHAKE-256 over the lowercase ASCII hex address body, not Keccak.
  *   - The address helpers are length-agnostic: `addressToString`,
  *     `stringToAddress`, and `isValidAddress` accept any (positive, even)
  *     byte length so that 20-byte, 64-byte, and future addresses can
@@ -111,20 +112,59 @@ function stringToAddress(addrStr) {
 }
 
 /**
- * Check if a string is a valid QRL address format (structure only).
+ * Return the EIP-55-style mixed-case representation of a QRL address using
+ * SHAKE-256 instead of Keccak. The hash input is the lowercase ASCII hex
+ * address body without the Q prefix.
+ * @param {string} addrStr - QRL address string.
+ * @returns {string} Checksummed QRL address string.
+ * @throws {Error} If address format is invalid.
+ */
+function toChecksumAddress(addrStr) {
+  const body = getAddressBody(addrStr);
+  const lowerBody = body.toLowerCase();
+  const hash = shake256.create({ dkLen: lowerBody.length / 2 }).update(new TextEncoder().encode(lowerBody)).digest();
+  const hashHex = [...hash].map((b) => b.toString(16).padStart(2, '0')).join('');
+
+  let checksummed = 'Q';
+  for (let i = 0; i < lowerBody.length; i += 1) {
+    const char = lowerBody[i];
+    checksummed += char >= 'a' && char <= 'f' && Number.parseInt(hashHex[i], 16) >= 8 ? char.toUpperCase() : char;
+  }
+
+  return checksummed;
+}
+
+/**
+ * Check if a string is a valid QRL checksum address.
+ * Lowercase and uppercase address bodies are accepted as non-checksummed
+ * compatibility forms. Mixed-case address bodies must match the SHAKE-256
+ * checksum exactly.
+ * @param {string} addrStr - Address string to validate.
+ * @returns {boolean} True if valid address format and checksum policy.
+ */
+function isValidChecksumAddress(addrStr) {
+  try {
+    const body = getAddressBody(addrStr);
+    if (body === body.toLowerCase() || body === body.toUpperCase()) {
+      return true;
+    }
+    return `Q${body}` === toChecksumAddress(addrStr);
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Check if a string is a valid QRL address.
  * Accepts any `Q`-prefixed even-length hex string — this lets 20-byte and
- * 64-byte addresses coexist. QRL addresses contain no checksum; applications
- * should add their own confirmation or checksum layer.
+ * 64-byte addresses coexist. Lowercase and uppercase address bodies are
+ * accepted as non-checksummed compatibility forms; mixed-case address bodies
+ * must match the SHAKE-256 checksum.
  * @param {string} addrStr - Address string to validate.
  * @returns {boolean} True if valid address format.
  */
 function isValidAddress(addrStr) {
-  try {
-    stringToAddress(addrStr);
-    return true;
-  } catch {
-    return false;
-  }
+  return isValidChecksumAddress(addrStr);
 }
 
 /**
@@ -158,6 +198,24 @@ function getAddressFromPKAndDescriptor(pk, descriptor, addressSize = DEFAULT_ADD
   input.set(descBytes, 0);
   input.set(pk, descBytes.length);
   return shake256.create({ dkLen: addressSize }).update(input).digest();
+}
+
+function getAddressBody(addrStr) {
+  if (typeof addrStr !== 'string') {
+    throw new Error('address must be a string');
+  }
+  const trimmed = addrStr.trim();
+  if (!trimmed.startsWith('Q') && !trimmed.startsWith('q')) {
+    throw new Error('address must start with Q');
+  }
+  const body = trimmed.slice(1);
+  if (body.length === 0 || body.length % 2 !== 0) {
+    throw new Error(`address must be Q + a non-empty even number of hex characters, got ${body.length}`);
+  }
+  if (!/^[0-9a-fA-F]+$/.test(body)) {
+    throw new Error('address contains invalid characters');
+  }
+  return body;
 }
 
 /**
@@ -5166,4 +5224,4 @@ function newWalletFromExtendedSeed(extendedSeed, addressSize) {
   }
 }
 
-export { ADDRESS_SIZE, ADDRESS_SIZE_CATEGORY_1, ADDRESS_SIZE_CATEGORY_5, DEFAULT_ADDRESS_SIZE, DESCRIPTOR_SIZE, Descriptor, EXTENDED_SEED_SIZE, ExtendedSeed, Wallet as MLDSA87, SEED_SIZE, SIGNING_CONTEXT_PREFIX, SIGNING_CONTEXT_SIZE, SIGNING_CONTEXT_VERSION, Seed, WalletType, addressToString, getAddressFromPKAndDescriptor, isValidAddress, newMLDSA87Descriptor, newWalletFromExtendedSeed, signingContext, stringToAddress };
+export { ADDRESS_SIZE, ADDRESS_SIZE_CATEGORY_1, ADDRESS_SIZE_CATEGORY_5, DEFAULT_ADDRESS_SIZE, DESCRIPTOR_SIZE, Descriptor, EXTENDED_SEED_SIZE, ExtendedSeed, Wallet as MLDSA87, SEED_SIZE, SIGNING_CONTEXT_PREFIX, SIGNING_CONTEXT_SIZE, SIGNING_CONTEXT_VERSION, Seed, WalletType, addressToString, getAddressFromPKAndDescriptor, isValidAddress, isValidChecksumAddress, newMLDSA87Descriptor, newWalletFromExtendedSeed, signingContext, stringToAddress, toChecksumAddress };

@@ -2,7 +2,13 @@ import { expect } from 'chai';
 import { hexToBytes, bytesToHex } from '@noble/hashes/utils.js';
 import { CryptoPublicKeyBytes } from '@theqrl/mldsa87';
 import { walletTestCases } from '../fixtures/ml_dsa_87.fixtures.js';
-import { addressToString, getAddressFromPKAndDescriptor } from '../../src/wallet/common/address.js';
+import {
+  addressToString,
+  getAddressFromPKAndDescriptor,
+  isValidAddress,
+  isValidChecksumAddress,
+  toChecksumAddress,
+} from '../../src/wallet/common/address.js';
 import { Descriptor } from '../../src/wallet/common/descriptor.js';
 import { DESCRIPTOR_SIZE } from '../../src/wallet/common/constants.js';
 import { WalletType } from '../../src/wallet/common/wallettype.js';
@@ -55,5 +61,48 @@ describe('wallet/common/address', () => {
   it('getAddressFromPKAndDescriptor rejects non-Uint8 public keys', () => {
     const desc = new Descriptor(Uint8Array.from([1, 0, 0]));
     expect(() => getAddressFromPKAndDescriptor([1, 2, 3], desc)).to.throw('pk must be Uint8Array');
+  });
+
+  it('toChecksumAddress returns SHAKE256 mixed-case address without changing bytes', () => {
+    const lowerAddress = `Q${'ab'.repeat(64)}`;
+    const checksummed = toChecksumAddress(lowerAddress);
+
+    expect(checksummed).to.equal(
+      'QabaBABabaBAbAbAbABaBABaBabaBabaBAbabaBABABAbAbabababAbaBaBABABabABaBaBABABaBabaBABaBabABAbABabaBAbABAbABAbaBabABababAbaBaBabaBAB'
+    );
+    expect(checksummed).to.have.length(lowerAddress.length);
+    expect(checksummed[0]).to.equal('Q');
+    expect(checksummed.slice(1).toLowerCase()).to.equal(lowerAddress.slice(1));
+    expect(checksummed).to.not.equal(lowerAddress);
+  });
+
+  it('validates lowercase and uppercase addresses as non-checksummed compatibility forms', () => {
+    const lowerAddress = `Q${'ab'.repeat(64)}`;
+    const upperAddress = `Q${'AB'.repeat(64)}`;
+
+    expect(isValidChecksumAddress(lowerAddress)).to.equal(true);
+    expect(isValidChecksumAddress(upperAddress)).to.equal(true);
+    expect(isValidAddress(lowerAddress)).to.equal(true);
+    expect(isValidAddress(upperAddress)).to.equal(true);
+  });
+
+  it('validates mixed-case addresses against the SHAKE256 checksum', () => {
+    const lowerAddress = `Q${'ab'.repeat(64)}`;
+    const checksummed = toChecksumAddress(lowerAddress);
+
+    expect(isValidChecksumAddress(checksummed)).to.equal(true);
+    expect(isValidAddress(checksummed)).to.equal(true);
+    expect(isValidChecksumAddress(`Q${'aB'.repeat(64)}`)).to.equal(false);
+    expect(isValidAddress(`Q${'aB'.repeat(64)}`)).to.equal(false);
+  });
+
+  it('detects checksum typos in mixed-case addresses', () => {
+    const checksummed = toChecksumAddress(`Q${'ab'.repeat(64)}`);
+    const chars = [...checksummed];
+    const index = chars.findIndex((char, i) => i > 0 && /[a-fA-F]/.test(char));
+    chars[index] =
+      chars[index] === chars[index].toLowerCase() ? chars[index].toUpperCase() : chars[index].toLowerCase();
+
+    expect(isValidChecksumAddress(chars.join(''))).to.equal(false);
   });
 });

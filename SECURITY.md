@@ -128,13 +128,13 @@ Addresses are displayed with a `Q` prefix in lowercase hexadecimal, always
 
 ## Address Security
 
-### No Built-in Checksum
+### Mixed-Case Address Checksum
 
-**Important:** QRL addresses do not include a checksum (unlike EIP-55 mixed-case encoding in Ethereum). `isValidAddress()` only checks the structural format — `Q` prefix followed by an even number of lowercase/uppercase hex characters — it cannot detect a mistyped or truncated address. Length is not fixed by the validator because 20-byte, 64-byte, and future addresses coexist; consumers that require a specific length should check `stringToAddress(addr).length` after validation.
+QRL addresses support an EIP-55-style mixed-case checksum via `toChecksumAddress()`, using SHAKE256 over the lowercase ASCII hex address body instead of Keccak. `isValidAddress()` accepts lowercase and uppercase addresses as compatibility forms, but mixed-case inputs must match the SHAKE256 checksum exactly. Length is not fixed by the validator because 20-byte, 64-byte, and future addresses coexist; consumers that require a specific length should check `stringToAddress(addr).length` after validation.
 
 **Implications:**
-- Any `Q` + even-length hex string passes structural validation
-- A single character error produces a valid but unrelated address
+- Lowercase and uppercase addresses cannot detect transcription errors by casing alone
+- A mistyped mixed-case address is rejected when the checksum no longer matches
 - Funds sent to a mistyped address are unrecoverable
 
 **Recommended Application-Level Mitigations:**
@@ -145,8 +145,8 @@ Addresses are displayed with a `Q` prefix in lowercase hexadecimal, always
 2. **Full Address Verification:**
    Always display the **complete** address and require explicit user confirmation before signing a transaction. Never truncate to first/last characters — address-poisoning and dusting attacks deliberately generate addresses that match a target's prefix and suffix to exploit partial visual checks.
 
-3. **Application-Layer Checksums:**
-   Applications that store or transmit addresses may add their own checksum envelope (e.g. CRC32, Base58Check, or Bech32) to detect transcription errors before submitting a transaction. This is intentionally left to the application layer so that different transports can choose the scheme best suited to their context.
+3. **Checksummed Display:**
+   Display addresses with `toChecksumAddress()` where users copy, confirm, or compare addresses. Continue accepting lowercase addresses for compatibility with existing tools.
 
 4. **Second-Step Verification:**
    For high-value transactions, implement a secondary confirmation channel (e.g. displaying the address on a separate device, QR code cross-check, or out-of-band confirmation) to guard against clipboard hijacking and address substitution attacks.

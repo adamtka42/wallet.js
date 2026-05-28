@@ -158,13 +158,14 @@ The same optional argument is available on `newWalletFromSeed(seed, metadata, ad
 **Address Format:** `Q` prefix followed by 2 × `addressSize` lowercase hex characters. Default is 64 bytes (129-char string).
 - Output is always lowercase; input parsing is case-insensitive
 - `addressToString`, `stringToAddress`, and `isValidAddress` are length-agnostic — they accept any `Q` + even-length hex string, so 20-byte, 64-byte, and future addresses coexist transparently.
-- No checksum encoding (unlike EIP-55) — `isValidAddress()` checks format only, not correctness. A single mistyped character will produce a valid but unrelated address. Applications should implement their own checksum or confirmation UX to guard against transcription errors. See [SECURITY.md](SECURITY.md#address-security) for recommendations.
+- `toChecksumAddress()` renders an EIP-55-style mixed-case checksum using SHAKE256 instead of Keccak. Lowercase and uppercase addresses remain accepted as compatibility forms; mixed-case input must match the checksum.
 
 ```javascript
 import {
   addressToString,
   stringToAddress,
-  isValidAddress
+  isValidAddress,
+  toChecksumAddress
 } from '@theqrl/wallet.js';
 
 // Convert bytes to string
@@ -174,10 +175,13 @@ const addrStr = addressToString(addressBytes); // 'Qabc...'
 const addrBytes = stringToAddress('Qabc123...');
 const same = stringToAddress('QABC123...');  // Also valid
 
-// Validate address format (structure only — no checksum)
+// Validate address format and SHAKE256 checksum policy
 if (isValidAddress(userInput)) {
-  // Format is valid, but confirm with the user before transacting
+  // Lowercase/uppercase compatibility forms are valid.
+  // Mixed-case inputs must match the checksum.
 }
+
+const displayAddress = toChecksumAddress(addrStr);
 ```
 
 ### Seeds and Descriptors
